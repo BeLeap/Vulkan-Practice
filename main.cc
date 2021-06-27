@@ -11,6 +11,16 @@
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
+
+const std::vector<const char*> validationLayers = {
+    "VK_LAYER_KHRONOS_validation"};
+
+#ifdef NDEBUG
+const bool enableValidationLayer = false;
+#else
+const bool enableValidationLayer = true;
+#endif
+
 class HelloTriangleApplication {
  public:
   void run() {
@@ -24,16 +34,42 @@ class HelloTriangleApplication {
   GLFWwindow* window;
   VkInstance instance;
 
+  bool checkValidationLayerSupport() {
+      uint32_t layerCount;
+      vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+      std::vector<VkLayerProperties> availableLayers(layerCount);
+      vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+      for (const char* layerName : validationLayers) {
+        bool layerFound = false;
+
+        for (const auto& layerProperties : availableLayers) {
+          if (strcmp(layerName, layerProperties.layerName) == 0) {
+            layerFound = true;
+            break;
+          }
+        }
+
+        if (!layerFound) {
+          return false;
+        }
+      }
+
+      return true;
+  }
+
   bool extensionSupported(
       const char* requiredExtensions[], int requiredExtensionCount,
       std::vector<VkExtensionProperties> supportedExtensions) {
     for (int i = 0; i < requiredExtensionCount; ++i) {
-      std::string requiredExtension = requiredExtensions[i];
+      const char* requiredExtension = requiredExtensions[i];
 
       bool exists = false;
-      for (auto property : supportedExtensions) {
-        if (property.extensionName == requiredExtension) {
+      for (const auto &property : supportedExtensions) {
+        if (strcmp(property.extensionName, requiredExtension) == 0) {
           exists = true;
+          break;
         }
       }
 
@@ -46,6 +82,11 @@ class HelloTriangleApplication {
   }
 
   void createInstance() {
+    if (enableValidationLayer && !checkValidationLayerSupport()) {
+      throw std::runtime_error(
+          "validation layer requested, but not available!");
+    }
+
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = "Hello Triangle";
@@ -64,6 +105,7 @@ class HelloTriangleApplication {
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
     uint32_t extensionCount = 0;
+    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
     std::vector<VkExtensionProperties> extensions(extensionCount);
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount,
                                            extensions.data());
