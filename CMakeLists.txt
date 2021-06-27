@@ -3,6 +3,6 @@ project(VulkanPractice VERSION 0.0.1)
 
 find_package(Vulkan REQUIRED)
 
-add_executable(VulkanPractice VulkanPractice.cc)
+add_executable(main main.cc)
 
-target_link_libraries(VulkanPractice PRIVATE Vulkan::Vulkan)
+target_link_libraries(main PRIVATE Vulkan::Vulkan)
