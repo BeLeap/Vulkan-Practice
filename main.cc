@@ -35,6 +35,20 @@ class HelloTriangleApplication {
   GLFWwindow* window;
   VkInstance instance;
 
+  void populateDebugMessengerInfo(
+      VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
+    createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    createInfo.messageSeverity =
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    createInfo.pfnUserCallback = debugCallback;
+  }
+
   VkDebugUtilsMessengerEXT debugMessenger;
 
   static VKAPI_ATTR VkBool32 VKAPI_CALL
@@ -87,28 +101,6 @@ class HelloTriangleApplication {
     return true;
   }
 
-  // bool extensionSupported(
-  //     const char* requiredExtensions[], int requiredExtensionCount,
-  //     std::vector<VkExtensionProperties> supportedExtensions) {
-  //   for (int i = 0; i < requiredExtensionCount; ++i) {
-  //     const char* requiredExtension = requiredExtensions[i];
-
-  //     bool exists = false;
-  //     for (const auto& property : supportedExtensions) {
-  //       if (strcmp(property.extensionName, requiredExtension) == 0) {
-  //         exists = true;
-  //         break;
-  //       }
-  //     }
-
-  //   if (!exists) {
-  //     return false;
-  //   }
-  // }
-
-  //   return true;
-  // }
-
   void createInstance() {
     if (enableValidationLayers && !checkValidationLayerSupport()) {
       throw std::runtime_error(
@@ -131,12 +123,18 @@ class HelloTriangleApplication {
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
     if (enableValidationLayers) {
       createInfo.enabledLayerCount =
           static_cast<uint32_t>(validationLayers.size());
       createInfo.ppEnabledLayerNames = validationLayers.data();
+
+      populateDebugMessengerInfo(debugCreateInfo);
+      createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
     } else {
       createInfo.enabledLayerCount = 0;
+
+      createInfo.pNext = nullptr;
     }
 
     VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
@@ -161,16 +159,7 @@ class HelloTriangleApplication {
     if (!enableValidationLayers) return;
 
     VkDebugUtilsMessengerCreateInfoEXT createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo.messageSeverity =
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    createInfo.pfnUserCallback = debugCallback;
-    createInfo.pUserData = nullptr;
+    populateDebugMessengerInfo(createInfo);
 
     if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr,
                                      &debugMessenger) != VK_SUCCESS) {
