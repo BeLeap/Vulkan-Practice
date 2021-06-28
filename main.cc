@@ -1,3 +1,4 @@
+#include <vulkan/vk_platform.h>
 #include <vulkan/vulkan_core.h>
 #include <algorithm>
 #include <cstdint>
@@ -34,6 +35,33 @@ class HelloTriangleApplication {
   GLFWwindow* window;
   VkInstance instance;
 
+  VkDebugUtilsMessengerEXT debugMessenger;
+
+  static VKAPI_ATTR VkBool32 VKAPI_CALL
+  debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageServerity,
+                VkDebugUtilsMessageTypeFlagsEXT messageType,
+                const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                void* pUserData) {
+    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+
+    return VK_FALSE;
+  }
+
+  std::vector<const char*> getRequiredExtensions() {
+    uint32_t glfwExtensionCount = 0;
+    const char** glfwExtensions;
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+    std::vector<const char*> extensions(glfwExtensions,
+                                        glfwExtensions + glfwExtensionCount);
+
+    if (enableValidationLayers) {
+      extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
+
+    return extensions;
+  }
+
   bool checkValidationLayerSupport() {
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -59,27 +87,27 @@ class HelloTriangleApplication {
     return true;
   }
 
-  bool extensionSupported(
-      const char* requiredExtensions[], int requiredExtensionCount,
-      std::vector<VkExtensionProperties> supportedExtensions) {
-    for (int i = 0; i < requiredExtensionCount; ++i) {
-      const char* requiredExtension = requiredExtensions[i];
+  // bool extensionSupported(
+  //     const char* requiredExtensions[], int requiredExtensionCount,
+  //     std::vector<VkExtensionProperties> supportedExtensions) {
+  //   for (int i = 0; i < requiredExtensionCount; ++i) {
+  //     const char* requiredExtension = requiredExtensions[i];
 
-      bool exists = false;
-      for (const auto& property : supportedExtensions) {
-        if (strcmp(property.extensionName, requiredExtension) == 0) {
-          exists = true;
-          break;
-        }
-      }
+  //     bool exists = false;
+  //     for (const auto& property : supportedExtensions) {
+  //       if (strcmp(property.extensionName, requiredExtension) == 0) {
+  //         exists = true;
+  //         break;
+  //       }
+  //     }
 
-      if (!exists) {
-        return false;
-      }
-    }
+  //   if (!exists) {
+  //     return false;
+  //   }
+  // }
 
-    return true;
-  }
+  //   return true;
+  // }
 
   void createInstance() {
     if (enableValidationLayers && !checkValidationLayerSupport()) {
@@ -99,23 +127,9 @@ class HelloTriangleApplication {
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
 
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions;
-
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-    std::vector<VkExtensionProperties> extensions(extensionCount);
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount,
-                                           extensions.data());
-
-    if (!extensionSupported(glfwExtensions, glfwExtensionCount, extensions)) {
-      throw std::runtime_error("not supported!");
-    }
-
-    createInfo.enabledExtensionCount = glfwExtensionCount;
-    createInfo.ppEnabledExtensionNames = glfwExtensions;
+    auto extensions = getRequiredExtensions();
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+    createInfo.ppEnabledExtensionNames = extensions.data();
 
     if (enableValidationLayers) {
       createInfo.enabledLayerCount =
@@ -138,7 +152,46 @@ class HelloTriangleApplication {
     window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
   }
 
-  void initVulkan() { createInstance(); }
+  void initVulkan() {
+    createInstance();
+    setupDebugMessenger();
+  }
+
+  void setupDebugMessenger() {
+    if (!enableValidationLayers) return;
+
+    VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    createInfo.messageSeverity =
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    createInfo.pfnUserCallback = debugCallback;
+    createInfo.pUserData = nullptr;
+
+    if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr,
+                                     &debugMessenger) != VK_SUCCESS) {
+      throw std::runtime_error("failed to set up debug messenger!");
+    }
+  }
+
+  VkResult CreateDebugUtilsMessengerEXT(
+      VkInstance instance,
+      const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+      const VkAllocationCallbacks* pAllocator,
+      VkDebugUtilsMessengerEXT* pDebugMessenger) {
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+        instance, "vkCreateDebugUtilsMessengerEXT");
+
+    if (func != nullptr) {
+      return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    } else {
+      return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+  }
 
   void mainLoop() {
     while (!glfwWindowShouldClose(window)) {
@@ -146,7 +199,21 @@ class HelloTriangleApplication {
     }
   }
 
+  void DestroyDebugUtilsMessengerEXT(VkInstance instance,
+                                     VkDebugUtilsMessengerEXT debugMessenger,
+                                     const VkAllocationCallbacks* pAllocator) {
+    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+        instance, "vkDestroyDebugUtilsMessengerEXT");
+
+    if (func != nullptr) {
+      func(instance, debugMessenger, pAllocator);
+    }
+  }
+
   void cleanup() {
+    if (enableValidationLayers) {
+      DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+    }
     vkDestroyInstance(instance, nullptr);
     glfwDestroyWindow(window);
 
