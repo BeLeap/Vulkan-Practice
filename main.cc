@@ -35,28 +35,28 @@ class HelloTriangleApplication {
   VkInstance instance;
 
   bool checkValidationLayerSupport() {
-      uint32_t layerCount;
-      vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+    uint32_t layerCount;
+    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
-      std::vector<VkLayerProperties> availableLayers(layerCount);
-      vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+    std::vector<VkLayerProperties> availableLayers(layerCount);
+    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-      for (const char* layerName : validationLayers) {
-        bool layerFound = false;
+    for (const char* layerName : validationLayers) {
+      bool layerFound = false;
 
-        for (const auto& layerProperties : availableLayers) {
-          if (strcmp(layerName, layerProperties.layerName) == 0) {
-            layerFound = true;
-            break;
-          }
-        }
-
-        if (!layerFound) {
-          return false;
+      for (const auto& layerProperties : availableLayers) {
+        if (strcmp(layerName, layerProperties.layerName) == 0) {
+          layerFound = true;
+          break;
         }
       }
 
-      return true;
+      if (!layerFound) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   bool extensionSupported(
@@ -66,7 +66,7 @@ class HelloTriangleApplication {
       const char* requiredExtension = requiredExtensions[i];
 
       bool exists = false;
-      for (const auto &property : supportedExtensions) {
+      for (const auto& property : supportedExtensions) {
         if (strcmp(property.extensionName, requiredExtension) == 0) {
           exists = true;
           break;
