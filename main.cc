@@ -16,9 +16,9 @@ const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"};
 
 #ifdef NDEBUG
-const bool enableValidationLayer = false;
+const bool enableValidationLayers = false;
 #else
-const bool enableValidationLayer = true;
+const bool enableValidationLayers = true;
 #endif
 
 class HelloTriangleApplication {
@@ -82,7 +82,7 @@ class HelloTriangleApplication {
   }
 
   void createInstance() {
-    if (enableValidationLayer && !checkValidationLayerSupport()) {
+    if (enableValidationLayers && !checkValidationLayerSupport()) {
       throw std::runtime_error(
           "validation layer requested, but not available!");
     }
@@ -117,7 +117,13 @@ class HelloTriangleApplication {
     createInfo.enabledExtensionCount = glfwExtensionCount;
     createInfo.ppEnabledExtensionNames = glfwExtensions;
 
-    createInfo.enabledLayerCount = 0;
+    if (enableValidationLayers) {
+      createInfo.enabledLayerCount =
+          static_cast<uint32_t>(validationLayers.size());
+      createInfo.ppEnabledLayerNames = validationLayers.data();
+    } else {
+      createInfo.enabledLayerCount = 0;
+    }
 
     VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
     if (result != VK_SUCCESS) {
