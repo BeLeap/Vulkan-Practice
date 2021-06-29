@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(VulkanPractice VERSION 0.0.1)
+project(VulkanPractice)
 set (CMAKE_CXX_STANDARD 17)
 
 find_package(Vulkan REQUIRED)
